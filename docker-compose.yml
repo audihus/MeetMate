@@ -1,0 +1,65 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: meetmate_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: meetmate
+      POSTGRES_PASSWORD: meetmate
+      POSTGRES_DB: meetmate
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meetmate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: meetmate_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: meetmate_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: meetmate_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP port (backend kirim email ke sini)
+      - "8025:8025"   # Web UI (buka di browser buat lihat email)
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
