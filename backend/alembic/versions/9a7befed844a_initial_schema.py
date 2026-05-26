@@ -17,27 +17,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Enums
-    meetingstatus = postgresql.ENUM(
-        "scheduled", "completed", "cancelled", name="meetingstatus"
-    )
-    participantrole = postgresql.ENUM("organizer", "peserta", name="participantrole")
-    attendancestatus = postgresql.ENUM(
-        "pending", "hadir", "tidak_hadir", name="attendancestatus"
-    )
-    attendancemethod = postgresql.ENUM("manual", "link", name="attendancemethod")
-    processingstatus = postgresql.ENUM(
-        "queued", "transcribing", "diarizing", "extracting",
-        "sending_email", "completed", "failed",
-        name="processingstatus",
-    )
-    actionitemstatus = postgresql.ENUM("open", "done", name="actionitemstatus")
-    emailtype = postgresql.ENUM("invitation", "distribution", name="emailtype")
-    emailstatus = postgresql.ENUM("sent", "failed", name="emailstatus")
-
+    # Create all enum types first (checkfirst=True is safe for re-runs)
     for enum in [
-        meetingstatus, participantrole, attendancestatus, attendancemethod,
-        processingstatus, actionitemstatus, emailtype, emailstatus,
+        postgresql.ENUM("scheduled", "completed", "cancelled", name="meetingstatus"),
+        postgresql.ENUM("organizer", "peserta", name="participantrole"),
+        postgresql.ENUM("pending", "hadir", "tidak_hadir", name="attendancestatus"),
+        postgresql.ENUM("manual", "link", name="attendancemethod"),
+        postgresql.ENUM(
+            "queued", "transcribing", "diarizing", "extracting",
+            "sending_email", "completed", "failed",
+            name="processingstatus",
+        ),
+        postgresql.ENUM("open", "done", name="actionitemstatus"),
+        postgresql.ENUM("invitation", "distribution", name="emailtype"),
+        postgresql.ENUM("sent", "failed", name="emailstatus"),
     ]:
         enum.create(op.get_bind(), checkfirst=True)
 
@@ -65,7 +58,7 @@ def upgrade() -> None:
         sa.Column("tags", postgresql.ARRAY(sa.String), nullable=True),
         sa.Column(
             "status",
-            sa.Enum("scheduled", "completed", "cancelled", name="meetingstatus"),
+            postgresql.ENUM("scheduled", "completed", "cancelled", name="meetingstatus", create_type=False),
             nullable=False,
         ),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -81,7 +74,7 @@ def upgrade() -> None:
         sa.Column("email", sa.String(255), nullable=False),
         sa.Column(
             "role",
-            sa.Enum("organizer", "peserta", name="participantrole"),
+            postgresql.ENUM("organizer", "peserta", name="participantrole", create_type=False),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
@@ -109,13 +102,13 @@ def upgrade() -> None:
         sa.Column("participant_id", postgresql.UUID(as_uuid=True), nullable=False, unique=True),
         sa.Column(
             "status",
-            sa.Enum("pending", "hadir", "tidak_hadir", name="attendancestatus"),
+            postgresql.ENUM("pending", "hadir", "tidak_hadir", name="attendancestatus", create_type=False),
             nullable=False,
         ),
         sa.Column("checked_in_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "method",
-            sa.Enum("manual", "link", name="attendancemethod"),
+            postgresql.ENUM("manual", "link", name="attendancemethod", create_type=False),
             nullable=True,
         ),
         sa.ForeignKeyConstraint(
@@ -134,10 +127,11 @@ def upgrade() -> None:
         sa.Column("uploaded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "processing_status",
-            sa.Enum(
+            postgresql.ENUM(
                 "queued", "transcribing", "diarizing", "extracting",
                 "sending_email", "completed", "failed",
                 name="processingstatus",
+                create_type=False,
             ),
             nullable=False,
         ),
@@ -176,7 +170,7 @@ def upgrade() -> None:
         sa.Column("due_date", sa.Date, nullable=True),
         sa.Column(
             "status",
-            sa.Enum("open", "done", name="actionitemstatus"),
+            postgresql.ENUM("open", "done", name="actionitemstatus", create_type=False),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
@@ -194,14 +188,14 @@ def upgrade() -> None:
         sa.Column("recipient", sa.String(255), nullable=False),
         sa.Column(
             "type",
-            sa.Enum("invitation", "distribution", name="emailtype"),
+            postgresql.ENUM("invitation", "distribution", name="emailtype", create_type=False),
             nullable=False,
         ),
         sa.Column("meeting_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("sent_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "status",
-            sa.Enum("sent", "failed", name="emailstatus"),
+            postgresql.ENUM("sent", "failed", name="emailstatus", create_type=False),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
@@ -224,4 +218,4 @@ def downgrade() -> None:
         "emailstatus", "emailtype", "actionitemstatus", "processingstatus",
         "attendancemethod", "attendancestatus", "participantrole", "meetingstatus",
     ]:
-        sa.Enum(name=name).drop(op.get_bind(), checkfirst=True)
+        postgresql.ENUM(name=name).drop(op.get_bind(), checkfirst=True)
